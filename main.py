@@ -1,8 +1,13 @@
-from dotenv import load_dotenv
-import os
+from ollama import Client
 
-load_dotenv()
+client = Client(host='http://localhost:11434')
 
-api_key = os.getenv("GEMINI_API_KEY")
+response = client.chat(
+    model='llama3:latest',
+    messages=[
+        {'role': 'system', 'content': 'Ты полезный ассистент.'},
+        {'role': 'user', 'content': 'Скажи привет одной короткой фразой.'}
+    ]
+)
 
-print(api_key)
+print(response.message.content)
