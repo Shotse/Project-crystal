@@ -1,6 +1,16 @@
 from ollama import Client
+from agent import getcurrenttime, opencalculator
+
+available_functions = {
+    "getcurrenttime": getcurrenttime,
+    "opencalculator": opencalculator,
+}
+
+tools = [getcurrenttime, opencalculator]
+
 
 client = Client(host='http://localhost:11434')
+
 
 messages = [
     {'role': 'system', 'content': """
@@ -15,17 +25,37 @@ messages = [
     - Можно быть немного саркастичной или ироничной, но без грубого хамства.
     - Будь дружелюбной, но не навязчивой.
     - Эмодзи используй редко, не в каждом сообщении.
-    - Сейчас у тебя нет доступных команд. Пока ты только отвечаешь на вопросы и помогаешь словами.
+    - У тебя есть папка agent с командами для управления компьютером, которые ты можешь использовать, если пользователь попросит тебя что-то сделать. Команды:
+    - getcurrenttime() — узнать текущее время в Москве.
+    - opencalculator() — открыть калькулятор на компьютере.
+
     """}
 ]
+
+
 while True:
     user_input = input('Ты: ')
     if user_input.lower() in ['exit', 'quit']:
         print('Выход из программы.')
         break
-
     messages.append({'role': 'user', 'content': user_input})
-    response = client.chat(model='llama3:latest', messages=messages)
+
+    response = client.chat(model='llama3.1', tools=tools, messages=messages)
+    messages.append(response.message)
+
+    if response.message.tool_calls:
+        for call in response.message.tool_calls:
+            fn = available_functions.get(call.function.name)
+            if fn:
+                result = fn()
+                messages.append({
+                    "role": "tool",
+                    "name": call.function.name,
+                    "content": result
+                })
+
+        response = client.chat(model='llama3.1', tools=tools, messages=messages)
+
     answer = response.message.content
-    print('Crystal' + ':' + answer)
+    print("Crystal:", answer)
     messages.append({'role': 'assistant', 'content': answer})
